@@ -134,7 +134,7 @@ gh attestation verify .\palsav-v0.1.0-windows-x86_64.zip --repo nuitsjp/palsav-d
 ## Development
 
 ```text
-cargo fmt --check
+cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --locked
 cargo llvm-cov --workspace --all-targets --locked --fail-under-lines 85 --fail-under-functions 80 --fail-under-regions 80

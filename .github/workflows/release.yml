@@ -34,7 +34,7 @@ jobs:
           $version = ($metadata.packages | Where-Object name -eq "palsav-decoder-cli").version
           if (-not $version) { throw "CLI package metadata was not found." }
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag must match Cargo version v$version." }
-      - run: cargo fmt --check
+      - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo build --release --locked --package palsav-decoder-cli
