@@ -6,7 +6,6 @@ export function normalizeBrowserPath(value) {
   if (parts.length === 0 || parts.some((part) => part === "." || part === "..")) return null;
   return parts.join("/");
 }
-
 export function discoverWorlds(files) {
   const normalized = [];
   for (const file of files) {
@@ -74,4 +73,3 @@ export async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
-

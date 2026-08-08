@@ -25,4 +25,3 @@ transaction. Unknown or prototype-related keys are rejected.
 Stable errors are `MISSING_LEVEL`, `UNSUPPORTED_FORMAT`, `CORRUPT_SAVE`, `LIMIT_EXCEEDED`,
 `WORKER_TRAPPED`, `WORKER_TIMEOUT`, `PROTOCOL_MISMATCH`, and `STORAGE_QUOTA`. Optional player
 failures produce `playerDataPartiallyUnavailable` without identifying a player or path.
-

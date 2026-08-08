@@ -18,7 +18,6 @@ test("backupを除外し複数ワールドを更新日時順に検出する", ()
   assert.equal(worlds[1].players[0].playerUId, "0123456789abcdef0123456789abcdef");
   assert.ok(worlds[0].metadata);
 });
-
 test("path traversalと絶対パスを拒否する", () => {
   assert.equal(normalizeBrowserPath("world/../Level.sav"), null);
   assert.equal(normalizeBrowserPath("C:/world/Level.sav"), null);
@@ -41,4 +40,3 @@ test("許可originと安定error codeを判定する", () => {
   assert.equal(errorCode(new Error("LIMIT_EXCEEDED:too large")), "LIMIT_EXCEEDED");
   assert.equal(errorCode(new Error("secret path")), "CORRUPT_SAVE");
 });
-

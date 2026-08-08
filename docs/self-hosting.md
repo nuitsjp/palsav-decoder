@@ -24,4 +24,3 @@ may still record IP addresses and user agents; disclose that in the host's priva
 GitHub Pages is a reference deployment with no SLA. It is suitable for evaluating the UI at small
 scale, not as PalOptimizer's production dependency. High-traffic operators should use their own
 static hosting and bandwidth policy.
-

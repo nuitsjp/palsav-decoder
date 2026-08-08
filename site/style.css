@@ -21,4 +21,3 @@ ul { padding-left: 20px; }
 .error { color: #a32727; font-weight: 700; }
 footer { margin-top: 36px; }
 @media (prefers-color-scheme: dark) { :root { background:#10191c; color:#e8eff0; } .card { background:#182529; border-color:#34474c; } .muted, footer, #candidate-list span { color:#a9b8bb; } }
-

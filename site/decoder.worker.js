@@ -18,4 +18,3 @@ self.addEventListener("message", async (event) => {
     self.postMessage({ type: "error", message: String(error) });
   }
 });
-
