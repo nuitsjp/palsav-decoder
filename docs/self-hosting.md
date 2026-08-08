@@ -8,7 +8,7 @@ Required hosting behavior:
 - HTTPS only.
 - `application/wasm` for `.wasm`.
 - `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
-- CSP equivalent to `default-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`.
+- CSP equivalent to `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`.
 - `index.html` and `decoder-config.json`: revalidate or short cache.
 - content-hashed files below `assets/`: immutable long cache.
 - no upload endpoint, request-body logging, analytics injection, advertisement, external font, or CDN script.
