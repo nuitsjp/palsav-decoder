@@ -1,9 +1,9 @@
 [workspace]
-members = ["cli", "shared", "web-api"]
+members = ["cli", "shared", "wasm", "web-api"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.96"
 license = "GPL-3.0-or-later"
@@ -16,6 +16,7 @@ oozextract = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tempfile = "3"
+wasm-bindgen = "0.2.108"
 
 [profile.release]
 opt-level = "z"

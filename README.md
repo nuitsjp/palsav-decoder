@@ -1,8 +1,8 @@
 # palsav-decoder
 
-`palsav` is a standalone CLI that decodes Palworld save files into application-neutral JSON or NDJSON.
-The repository is also prepared for a Web API delivery surface that will use the same shared decoder
-without coupling HTTP concerns to the CLI.
+`palsav` decodes Palworld save files into application-neutral JSON. It is distributed as a standalone
+CLI and as a fully static, single-thread WebAssembly Web Decoder. Both surfaces use the same byte-based
+decoder core; raw save files never need to be uploaded to a server.
 
 ## License
 
@@ -32,11 +32,48 @@ web-api/
 shared/
   src/lib.rs                 shared decoding and document-contract facade
   src/implementation/        decoder, schema, model, and save-format details
+wasm/
+  src/lib.rs                 bounded wasm-bindgen facade used only inside a dedicated Worker
+site/
+  index.html                 static, host-neutral browser UI and PalOptimizer bridge
+  app.js / decoder.worker.js source modules hashed by the release build
 ```
 
 Each delivery surface depends on the shared facade. The CLI never depends on Web API code, and HTTP
 transport, upload handling, authentication, and background execution will remain below the Web API
 facade when they are added.
+
+## Web Decoder
+
+The Web Decoder accepts either a `SaveGames` directory or one world directory in current stable
+Edge/Chrome on Windows 10/11. It discovers worlds before reading file bytes, ignores every `backup/`
+tree, requires one root `Level.sav`, and accepts optional `LevelMeta.sav` and
+`Players/<32-hex>.sav` files. Decoding runs in a disposable Web Worker. No save bytes, world IDs,
+instance IDs, or filenames are sent over the network or written to analytics.
+
+Build the versioned static artifact with:
+
+```text
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.127 --locked
+node scripts/build-web.mjs
+```
+
+The output is `dist/web/`. `decoder-manifest.json` records the decoder, bridge, schema, source commit,
+and SHA-256 of every file. The artifact has no service worker, analytics, advertisements, external
+fonts, or CDN dependencies.
+
+### Hosting model
+
+GitHub Pages is provided only as a small reference deployment with no SLA. It is not the production
+host for PalOptimizer and should not be treated as a high-traffic public service. For regular or
+high-volume use, download the versioned release archive, verify its checksum, and self-host that exact
+artifact on an HTTPS origin you control. See [docs/self-hosting.md](docs/self-hosting.md).
+
+The hosting administrator must copy `decoder-config.example.json` to `decoder-config.json` and list
+the exact PalOptimizer return origins. End users cannot supply arbitrary decoder URLs. A deployment
+may use ordinary access logs (IP address, user agent, requested static asset); save file contents are
+never part of those requests.
 
 ## Usage
 

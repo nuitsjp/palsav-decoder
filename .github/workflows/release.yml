@@ -20,10 +20,11 @@ jobs:
         with:
           toolchain: 1.96.0
           components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
       - name: Install pinned license tool
         uses: taiki-e/install-action@6c6fd71fe4fb72c3697d269963d0e15df8adedad # v2.85.10
         with:
-          tool: cargo-about@0.9.1
+          tool: cargo-about@0.9.1,wasm-bindgen-cli@0.2.127
       - name: Validate tag provenance
         shell: pwsh
         run: |
@@ -38,6 +39,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo build --release --locked --package palsav-decoder-cli
+      - run: node --test site/core.test.mjs
+      - run: node scripts/build-web.mjs
       - name: Generate third-party licenses
         shell: pwsh
         run: cargo about generate about.hbs --output-file THIRD_PARTY_LICENSES.html
@@ -52,6 +55,10 @@ jobs:
           $archivePath = "dist\$archiveName.zip"
           Compress-Archive -Path "$archiveDirectory\*" -DestinationPath $archivePath
           (Get-FileHash $archivePath -Algorithm SHA256).Hash.ToLowerInvariant() + "  $archiveName.zip" | Set-Content -Encoding ascii "$archivePath.sha256"
+          $webArchiveName = "palsav-web-$env:GITHUB_REF_NAME"
+          $webArchivePath = "dist\$webArchiveName.zip"
+          Compress-Archive -Path "dist\web\*" -DestinationPath $webArchivePath
+          (Get-FileHash $webArchivePath -Algorithm SHA256).Hash.ToLowerInvariant() + "  $webArchiveName.zip" | Set-Content -Encoding ascii "$webArchivePath.sha256"
       - name: Attest release archive
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:

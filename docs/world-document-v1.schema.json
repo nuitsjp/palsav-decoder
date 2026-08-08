@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nuitsjp/palsav-decoder/blob/v0.2.0/docs/world-document-v1.schema.json",
+  "title": "palsav WorldDocument v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "worldName", "characters", "playerContainers", "baseCamps", "world", "playerRelics", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "worldName": { "type": ["string", "null"], "maxLength": 200 },
+    "characters": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/character" } },
+    "playerContainers": { "$ref": "#/$defs/playerContainers" },
+    "baseCamps": { "oneOf": [{ "type": "null" }, { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/baseCamp" } }] },
+    "world": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/world" }] },
+    "playerRelics": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/playerRelics" } },
+    "warnings": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "enum": ["baseCampsUnavailable", "levelMetaUnavailable", "playerDataPartiallyUnavailable", "worldOverviewUnavailable"] }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"], "maxLength": 500 },
+    "nullableInteger": { "type": ["integer", "null"], "minimum": -1, "maximum": 100000 },
+    "stringList": { "type": "array", "maxItems": 256, "items": { "type": "string", "maxLength": 500 } },
+    "guid32": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } }
+    },
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId", "playerUId", "debugName", "characterId", "nickName", "ownedTimeUtc", "passiveSkills", "equipWaza", "masteredWaza", "level", "talentHp", "talentMelee", "talentShot", "talentDefense", "rank", "friendshipPoint", "slotContainerId", "slotIndex", "isPlayer", "gender", "ownerPlayerUId", "groupId", "rawDataDecoded"],
+      "properties": {
+        "instanceId": { "$ref": "#/$defs/nullableString" },
+        "playerUId": { "$ref": "#/$defs/nullableString" },
+        "debugName": { "$ref": "#/$defs/nullableString" },
+        "characterId": { "$ref": "#/$defs/nullableString" },
+        "nickName": { "$ref": "#/$defs/nullableString" },
+        "ownedTimeUtc": { "$ref": "#/$defs/nullableString" },
+        "passiveSkills": { "$ref": "#/$defs/stringList" },
+        "equipWaza": { "$ref": "#/$defs/stringList" },
+        "masteredWaza": { "$ref": "#/$defs/stringList" },
+        "level": { "$ref": "#/$defs/nullableInteger" },
+        "talentHp": { "$ref": "#/$defs/nullableInteger" },
+        "talentMelee": { "$ref": "#/$defs/nullableInteger" },
+        "talentShot": { "$ref": "#/$defs/nullableInteger" },
+        "talentDefense": { "$ref": "#/$defs/nullableInteger" },
+        "rank": { "$ref": "#/$defs/nullableInteger" },
+        "friendshipPoint": { "$ref": "#/$defs/nullableInteger" },
+        "slotContainerId": { "$ref": "#/$defs/nullableString" },
+        "slotIndex": { "$ref": "#/$defs/nullableInteger" },
+        "isPlayer": { "type": ["boolean", "null"] },
+        "gender": { "$ref": "#/$defs/nullableString" },
+        "ownerPlayerUId": { "$ref": "#/$defs/nullableString" },
+        "groupId": { "$ref": "#/$defs/nullableString" },
+        "rawDataDecoded": { "type": "boolean" }
+      }
+    },
+    "playerContainers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["palStorageContainerIds", "otomoContainerIds"],
+      "properties": {
+        "palStorageContainerIds": { "type": "array", "maxItems": 200, "items": { "type": "string", "maxLength": 100 } },
+        "otomoContainerIds": { "type": "array", "maxItems": 200, "items": { "type": "string", "maxLength": 100 } }
+      }
+    },
+    "baseCamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseCampId", "containerId", "slotNum", "instanceIds", "world"],
+      "properties": {
+        "baseCampId": { "$ref": "#/$defs/guid32" },
+        "containerId": { "type": ["string", "null"], "maxLength": 100 },
+        "slotNum": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000 },
+        "instanceIds": { "type": "array", "items": { "$ref": "#/$defs/guid32" } },
+        "world": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/point" }] }
+      }
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collectibles", "raids", "events", "players", "gameDay"],
+      "properties": {
+        "collectibles": { "type": "array", "maxItems": 20000, "items": { "type": "object" } },
+        "raids": { "type": "array", "maxItems": 200, "items": { "type": "object" } },
+        "events": { "type": "array", "maxItems": 200, "items": { "type": "object" } },
+        "players": { "type": "array", "maxItems": 200, "items": { "type": "object" } },
+        "gameDay": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+      }
+    },
+    "playerRelics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["playerUId", "state"],
+      "properties": {
+        "playerUId": { "$ref": "#/$defs/guid32" },
+        "state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schemaVersion", "relicsByType", "noteIds", "itemPickupGuids"],
+          "properties": {
+            "schemaVersion": { "const": 1 },
+            "relicsByType": { "type": "object" },
+            "noteIds": { "type": "array", "items": { "type": "string", "maxLength": 100 } },
+            "itemPickupGuids": { "type": "array", "items": { "$ref": "#/$defs/guid32" } }
+          }
+        }
+      }
+    }
+  }
+}

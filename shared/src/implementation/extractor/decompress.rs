@@ -44,6 +44,7 @@ fn oversize_message() -> String {
 
 /// Decompresses Oodle input. oozextract can panic instead of returning Err for corrupt input,
 /// so convert the panic into a recoverable error that the watch loop can retry.
+#[cfg(not(target_arch = "wasm32"))]
 fn decompress_oodle(payload: &[u8], uncompressed_size: usize) -> Result<Vec<u8>, String> {
     let payload = payload.to_vec();
     let outcome = std::panic::catch_unwind(move || {
@@ -60,6 +61,18 @@ fn decompress_oodle(payload: &[u8], uncompressed_size: usize) -> Result<Vec<u8>,
         Ok(result) => result,
         Err(_) => Err("Oodle decompression failed on malformed payload.".to_string()),
     }
+}
+
+/// A wasm panic cannot be recovered reliably. The caller runs this path only inside a disposable
+/// Worker, so a decoder panic traps the Worker and the page discards the entire wasm instance.
+#[cfg(target_arch = "wasm32")]
+fn decompress_oodle(payload: &[u8], uncompressed_size: usize) -> Result<Vec<u8>, String> {
+    let mut decoded = vec![0u8; uncompressed_size];
+    let written = oozextract::Extractor::new()
+        .read_from_slice(payload, &mut decoded)
+        .map_err(|error| format!("{error:?}"))?;
+    decoded.truncate(written);
+    Ok(decoded)
 }
 
 /// Equivalent to lib.mjs decompressSav. kind is zlib, double-zlib, oodle, or chunked-zlib.

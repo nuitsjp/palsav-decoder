@@ -1,0 +1,7 @@
+{
+  "allowedReturnOrigins": [
+    "https://paloptimizer.com",
+    "https://staging.example.workers.dev"
+  ]
+}
+
