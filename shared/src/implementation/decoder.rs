@@ -16,7 +16,11 @@ const WARNING_WORLD: &str = "worldOverviewUnavailable";
 
 pub fn decode_metadata(path: &Path) -> Result<MetadataDocument, String> {
     let bytes = fs::read(path).map_err(|error| error.to_string())?;
-    let decoded = extractor::decompress::decompress_sav(&bytes)?;
+    decode_metadata_bytes(&bytes)
+}
+
+pub fn decode_metadata_bytes(bytes: &[u8]) -> Result<MetadataDocument, String> {
+    let decoded = extractor::decompress::decompress_sav(bytes)?;
     Ok(MetadataDocument {
         schema_version: SCHEMA_VERSION,
         world_name: extractor::level_meta::extract_world_name_from_gvas(&decoded.payload)?,
@@ -25,7 +29,11 @@ pub fn decode_metadata(path: &Path) -> Result<MetadataDocument, String> {
 
 pub fn decode_player(path: &Path) -> Result<PlayerDocument, String> {
     let bytes = fs::read(path).map_err(|error| error.to_string())?;
-    let decoded = extractor::decompress::decompress_sav(&bytes)?;
+    decode_player_bytes(&bytes)
+}
+
+pub fn decode_player_bytes(bytes: &[u8]) -> Result<PlayerDocument, String> {
+    let decoded = extractor::decompress::decompress_sav(bytes)?;
     let (pal_storage_container_id, otomo_container_id) =
         extractor::gvas::read_player_container_ids(&decoded.payload)?;
     let point = extractor::world::extract_player_point_from_gvas(&decoded.payload)?;
@@ -91,8 +99,47 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
     } else {
         path.to_path_buf()
     };
-    let bytes = fs::read(&level_path).map_err(|error| error.to_string())?;
-    let decoded = extractor::decompress::decompress_sav(&bytes)?;
+    let level = fs::read(&level_path).map_err(|error| error.to_string())?;
+    let metadata = fs::read(save_dir.join("LevelMeta.sav")).ok();
+    let (player_paths, player_directory_unavailable) = player_files(&save_dir);
+    let mut player_partial = player_directory_unavailable;
+    let mut player_bytes = Vec::new();
+    for player_path in player_paths {
+        let Some(player_uid) = player_uid_from_path(&player_path) else {
+            player_partial = true;
+            continue;
+        };
+        match fs::read(player_path) {
+            Ok(bytes) => player_bytes.push((player_uid, bytes)),
+            Err(_) => player_partial = true,
+        }
+    }
+    let players = player_bytes
+        .iter()
+        .map(|(uid, bytes)| (uid.clone(), bytes.as_slice()))
+        .collect();
+    assemble_world_inner(&level, metadata.as_deref(), players, player_partial)
+}
+
+pub fn decode_level_bytes(bytes: &[u8]) -> Result<WorldDocument, String> {
+    assemble_world(bytes, None, Vec::new())
+}
+
+pub fn assemble_world(
+    level: &[u8],
+    metadata: Option<&[u8]>,
+    players: Vec<(String, &[u8])>,
+) -> Result<WorldDocument, String> {
+    assemble_world_inner(level, metadata, players, false)
+}
+
+fn assemble_world_inner(
+    level: &[u8],
+    metadata: Option<&[u8]>,
+    players: Vec<(String, &[u8])>,
+    mut player_partial: bool,
+) -> Result<WorldDocument, String> {
+    let decoded = extractor::decompress::decompress_sav(level)?;
     let characters = extractor::gvas::extract_characters_from_gvas(&decoded.payload)?;
     let mut warnings = Vec::new();
 
@@ -118,15 +165,12 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
     let mut player_containers = PlayerContainerIndex::default();
     let mut player_points = Vec::new();
     let mut player_relics = Vec::new();
-    let (player_files, player_directory_unavailable) = player_files(&save_dir);
-    let mut player_partial = player_directory_unavailable;
-    for player_path in player_files {
-        let player_uid = player_uid_from_path(&player_path);
-        let Ok(bytes) = fs::read(&player_path) else {
+    for (player_uid, bytes) in players {
+        if !is_player_uid(&player_uid) {
             player_partial = true;
             continue;
-        };
-        let Ok(player) = extractor::decompress::decompress_sav(&bytes) else {
+        }
+        let Ok(player) = extractor::decompress::decompress_sav(bytes) else {
             player_partial = true;
             continue;
         };
@@ -146,21 +190,17 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
             Ok(None) => {}
             Err(_) => player_partial = true,
         }
-        if let Some(player_uid) = player_uid {
-            match extractor::player_relics::extract_player_relics_from_gvas(&player.payload) {
-                Ok(relics) => player_relics.push(DecodedPlayerRelics {
-                    player_uid,
-                    state: crate::implementation::model::PlayerRelicState {
-                        schema_version: 1,
-                        relics_by_type: relics.relics,
-                        note_ids: relics.notes,
-                        item_pickup_guids: relics.ruins,
-                    },
-                }),
-                Err(_) => player_partial = true,
-            }
-        } else {
-            player_partial = true;
+        match extractor::player_relics::extract_player_relics_from_gvas(&player.payload) {
+            Ok(relics) => player_relics.push(DecodedPlayerRelics {
+                player_uid: player_uid.to_ascii_lowercase(),
+                state: crate::implementation::model::PlayerRelicState {
+                    schema_version: 1,
+                    relics_by_type: relics.relics,
+                    note_ids: relics.notes,
+                    item_pickup_guids: relics.ruins,
+                },
+            }),
+            Err(_) => player_partial = true,
         }
     }
     player_containers.pal_storage_container_ids.sort();
@@ -201,10 +241,9 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
         }
     };
 
-    let metadata_path = save_dir.join("LevelMeta.sav");
-    let world_name = match decode_metadata(&metadata_path) {
-        Ok(metadata) => metadata.world_name,
-        Err(_) => {
+    let world_name = match metadata.map(decode_metadata_bytes) {
+        Some(Ok(metadata)) => metadata.world_name,
+        Some(Err(_)) | None => {
             warnings.push(WARNING_LEVEL_META.to_string());
             None
         }
@@ -247,7 +286,11 @@ fn player_files(save_dir: &Path) -> (Vec<PathBuf>, bool) {
 
 fn player_uid_from_path(path: &Path) -> Option<String> {
     let value = path.file_stem()?.to_str()?.to_ascii_lowercase();
-    (value.len() == 32 && value.bytes().all(|byte| byte.is_ascii_hexdigit())).then_some(value)
+    is_player_uid(&value).then_some(value)
+}
+
+fn is_player_uid(value: &str) -> bool {
+    value.len() == 32 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 #[cfg(test)]
@@ -312,5 +355,36 @@ mod tests {
 
         assert!(document.player_relics.is_empty());
         assert_eq!(document.warnings, vec![WARNING_PLAYER_DATA.to_string()]);
+    }
+
+    #[test]
+    fn byte_api_matches_the_path_api_for_a_world() {
+        let directory = tempfile::tempdir().unwrap();
+        let level = build_level_sav(&standard_world_characters(), "double-zlib");
+        let metadata = build_level_meta_sav(Some("byte API"), "single-zlib");
+        fs::write(directory.path().join("Level.sav"), &level).unwrap();
+        fs::write(directory.path().join("LevelMeta.sav"), &metadata).unwrap();
+        fs::create_dir(directory.path().join("Players")).unwrap();
+
+        let from_path = decode_world(directory.path()).unwrap();
+        let from_bytes = assemble_world(&level, Some(&metadata), Vec::new()).unwrap();
+
+        assert_eq!(from_bytes, from_path);
+    }
+
+    #[test]
+    fn broken_optional_player_becomes_a_path_free_warning() {
+        let level = build_level_sav(&standard_world_characters(), "double-zlib");
+        let document = assemble_world(
+            &level,
+            None,
+            vec![("0123456789abcdef0123456789abcdef".to_string(), &[0_u8][..])],
+        )
+        .unwrap();
+
+        assert!(document.warnings.contains(&WARNING_PLAYER_DATA.to_string()));
+        assert!(!serde_json::to_string(&document)
+            .unwrap()
+            .contains("0123456789abcdef"));
     }
 }

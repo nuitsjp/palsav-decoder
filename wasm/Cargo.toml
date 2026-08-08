@@ -1,0 +1,17 @@
+[package]
+name = "palsav-decoder-wasm"
+description = "Single-thread WebAssembly facade for palsav-decoder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+palsav-decoder = { path = "../shared" }
+serde_json.workspace = true
+wasm-bindgen.workspace = true
