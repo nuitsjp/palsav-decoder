@@ -1,9 +1,10 @@
 // Base-camp extraction ported from tools/save-data-cli/node-save-tool/base-camps.mjs.
 // Scans worldSaveData and reads only BaseCampSaveData, CharacterContainerSaveData,
 // and MapObjectSaveData. Error strings intentionally match the JavaScript implementation.
+#[cfg(test)]
 use super::decompress::decompress_sav;
 use super::gvas::GvasReader;
-use crate::model::{JsNumber, WorldPoint};
+use crate::implementation::model::{JsNumber, WorldPoint};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -164,7 +165,8 @@ pub fn extract_base_camps_from_gvas(gvas_payload: &[u8]) -> Result<Vec<Extracted
 }
 
 /// Equivalent to base-camps.mjs extractBaseCampState; returns only camps because schemaVersion is constant.
-pub fn extract_base_camp_state(level_sav_path: &str) -> Result<Vec<ExtractedBaseCamp>, String> {
+#[cfg(test)]
+fn extract_base_camp_state(level_sav_path: &str) -> Result<Vec<ExtractedBaseCamp>, String> {
     let sav_bytes = std::fs::read(level_sav_path).map_err(|error| error.to_string())?;
     let decompressed = decompress_sav(&sav_bytes)?;
     extract_base_camps_from_gvas(&decompressed.payload)
@@ -481,7 +483,7 @@ fn read_byte_array(reader: &mut GvasReader) -> Result<Vec<u8>, String> {
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 mod fixture {
-    use crate::extractor::gvas::test_fixture::{
+    use crate::implementation::extractor::gvas::test_fixture::{
         fstring_byte_length, guid_bytes_from_canonical, write_header, GvasWriter,
     };
 
@@ -835,7 +837,7 @@ mod fixture {
 mod tests {
     use super::fixture::*;
     use super::*;
-    use crate::extractor::gvas::test_fixture::{
+    use crate::implementation::extractor::gvas::test_fixture::{
         guid_bytes_from_canonical, wrap_as_level_sav, write_header, GvasWriter,
     };
 

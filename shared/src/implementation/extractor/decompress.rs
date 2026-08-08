@@ -111,8 +111,8 @@ pub fn decompress_sav(sav_bytes: &[u8]) -> Result<DecompressedSav, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::gvas::extract_characters_from_gvas;
-    use crate::extractor::gvas::test_fixture::{
+    use crate::implementation::extractor::gvas::extract_characters_from_gvas;
+    use crate::implementation::extractor::gvas::test_fixture::{
         build_level_sav, deflate, expected_standard_characters, standard_world_characters,
         GvasWriter,
     };

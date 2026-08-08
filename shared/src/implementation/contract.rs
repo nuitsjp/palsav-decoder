@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-use crate::model::{
+use crate::implementation::model::{
     CacheCharacter, DecodedBaseCamp, DecodedPlayerRelics, PlayerContainerIndex, PlayerRelicState,
     WorldOverview, WorldPlayerPoint,
 };

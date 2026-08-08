@@ -1,6 +1,8 @@
 # palsav-decoder
 
 `palsav` is a standalone CLI that decodes Palworld save files into application-neutral JSON or NDJSON.
+The repository is also prepared for a Web API delivery surface that will use the same shared decoder
+without coupling HTTP concerns to the CLI.
 
 ## License
 
@@ -9,12 +11,32 @@ Copyright (C) 2026 Atsushi Nakamura.
 This entire repository is licensed under the [GNU General Public License v3.0 or later](LICENSE).
 The CLI runs as an independent process. Consuming applications pass an input path as a command-line
 argument, read application-neutral JSON or NDJSON from stdout, and receive diagnostics on stderr.
-The CLI does not provide an in-process library ABI.
+The CLI does not provide a stable in-process library ABI. The workspace-internal shared crate exists
+for the GPL-licensed CLI and Web API implementations in this repository.
 
 Binary releases include the GPL license, source location, third-party notices, and generated Rust
 dependency license texts. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Palworld and all related names and data belong to their respective rights holders. This repository does not include the game, game assets, DLLs, or actual save data.
+
+## Repository layout
+
+```text
+cli/
+  src/lib.rs                 CLI facade
+  src/implementation/        argument parsing and command execution details
+  src/main.rs                thin executable entry point
+web-api/
+  src/lib.rs                 Web API application facade
+  src/implementation/        Web-specific application details
+shared/
+  src/lib.rs                 shared decoding and document-contract facade
+  src/implementation/        decoder, schema, model, and save-format details
+```
+
+Each delivery surface depends on the shared facade. The CLI never depends on Web API code, and HTTP
+transport, upload handling, authentication, and background execution will remain below the Web API
+facade when they are added.
 
 ## Usage
 
@@ -112,11 +134,11 @@ gh attestation verify .\palsav-v0.1.0-windows-x86_64.zip --repo nuitsjp/palsav-d
 ## Development
 
 ```text
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test --locked
-cargo llvm-cov --all-targets --locked --fail-under-lines 85 --fail-under-functions 80 --fail-under-regions 80
-cargo build --release --locked
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --locked
+cargo llvm-cov --workspace --all-targets --locked --fail-under-lines 85 --fail-under-functions 80 --fail-under-regions 80
+cargo build --release --locked --package palsav-decoder-cli
 ```
 
 The release workflow validates that a version tag points to `main`, builds a license-complete Windows

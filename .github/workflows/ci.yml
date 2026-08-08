@@ -21,17 +21,17 @@ jobs:
         uses: taiki-e/install-action@6c6fd71fe4fb72c3697d269963d0e15df8adedad # v2.85.10
         with:
           tool: cargo-llvm-cov@0.8.7,cargo-audit@0.22.1
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --locked
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --locked
       - name: Enforce coverage baseline
         shell: pwsh
         run: |
-          cargo llvm-cov --all-targets --locked --fail-under-lines 85 --fail-under-functions 80 --fail-under-regions 80
+          cargo llvm-cov --workspace --all-targets --locked --fail-under-lines 85 --fail-under-functions 80 --fail-under-regions 80
       - name: Audit dependencies
         shell: pwsh
         run: cargo audit
-      - run: cargo build --release --locked
+      - run: cargo build --release --locked --package palsav-decoder-cli
       - name: Verify standalone executable
         shell: pwsh
         run: .\target\release\palsav.exe --version

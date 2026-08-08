@@ -1,0 +1,16 @@
+[package]
+name = "palsav-decoder-cli"
+description = "Standalone Palworld save decoder CLI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "palsav"
+path = "src/main.rs"
+
+[dependencies]
+palsav-decoder = { path = "../shared" }

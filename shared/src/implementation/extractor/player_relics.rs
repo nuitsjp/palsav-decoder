@@ -2,6 +2,7 @@
 // Ported from tools/save-data-cli/node-save-tool/player-relics.mjs.
 // Error strings, ordering, and deduplication match JavaScript because the resulting JSON payloads
 // are compared byte for byte.
+#[cfg(test)]
 use super::decompress::decompress_sav;
 use super::gvas::GvasReader;
 use serde::{Deserialize, Serialize};
@@ -38,7 +39,7 @@ pub struct PlayerRelicState {
     pub item_pickup_guids: Vec<String>,
 }
 
-impl From<PlayerRelicState> for crate::model::PlayerRelicState {
+impl From<PlayerRelicState> for crate::implementation::model::PlayerRelicState {
     fn from(value: PlayerRelicState) -> Self {
         Self {
             schema_version: value.schema_version,
@@ -104,7 +105,8 @@ pub fn extract_player_relics_from_gvas(gvas_payload: &[u8]) -> Result<PlayerReli
 }
 
 /// Equivalent to player-relics.mjs extractPlayerRelicState.
-pub fn extract_player_relic_state(player_sav_path: &str) -> Result<PlayerRelicState, String> {
+#[cfg(test)]
+fn extract_player_relic_state(player_sav_path: &str) -> Result<PlayerRelicState, String> {
     let sav_bytes = std::fs::read(player_sav_path).map_err(|error| error.to_string())?;
     let decompressed = decompress_sav(&sav_bytes)?;
     let PlayerRelics {

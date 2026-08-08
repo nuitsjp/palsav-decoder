@@ -1,14 +1,11 @@
 // Port of tools/save-data-cli/node-save-tool/world.mjs.
 // Extracts map-renderable world state from Level.sav and Players/*.sav.
 // Output, rounding, and ordering match the TypeScript implementation byte for byte.
-use std::collections::HashMap;
-use std::path::Path;
-
-use super::decompress::decompress_sav;
 use super::gvas::GvasReader;
-use crate::model::{
+use crate::implementation::model::{
     JsNumber, WorldCollectible, WorldEventPoint, WorldOverview, WorldPlayerPoint, WorldRaid,
 };
+use std::collections::HashMap;
 
 /// Ticks per in-game day. GameDateTimeTicks uses 100 ns units.
 const TICKS_PER_GAME_DAY: i64 = 864_000_000_000;
@@ -682,57 +679,6 @@ fn is_valid_event_kind(value: &str) -> bool {
         return false;
     }
     chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
-}
-
-/// Builds a world overview from a save directory, equivalent to world.mjs extractWorldOverview.
-pub fn extract_world_overview(save_dir: &Path) -> Result<WorldOverview, String> {
-    let level_bytes =
-        std::fs::read(save_dir.join("Level.sav")).map_err(|error| error.to_string())?;
-    let decompressed = decompress_sav(&level_bytes)?;
-    let world = extract_world_from_level_gvas(&decompressed.payload)?;
-
-    let mut players = Vec::new();
-    let players_dir = save_dir.join("Players");
-    let mut player_files: Vec<std::path::PathBuf> = std::fs::read_dir(&players_dir)
-        .map(|entries| {
-            entries
-                .flatten()
-                .map(|entry| entry.path())
-                .filter(|path| {
-                    path.file_name()
-                        .and_then(|name| name.to_str())
-                        .is_some_and(|name| name.to_ascii_lowercase().ends_with(".sav"))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    player_files.sort();
-    for path in player_files {
-        // A corrupt player save must not hide other players or world information.
-        let Ok(bytes) = std::fs::read(&path) else {
-            continue;
-        };
-        let Ok(decoded) = decompress_sav(&bytes) else {
-            continue;
-        };
-        let Ok(point) = extract_player_point_from_gvas(&decoded.payload) else {
-            continue;
-        };
-        if let Some(point) = point {
-            players.push(point);
-        }
-    }
-    players.sort_by(|left, right| left.player_uid.cmp(&right.player_uid));
-
-    let overview = WorldOverview {
-        collectibles: world.collectibles,
-        raids: world.raids,
-        events: world.events,
-        players,
-        game_day: world.game_day,
-    };
-    validate_world_overview(&overview)?;
-    Ok(overview)
 }
 
 #[cfg(test)]
