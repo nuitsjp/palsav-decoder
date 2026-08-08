@@ -1,8 +1,10 @@
 // Port of tools/save-data-cli/node-save-tool/level-meta.mjs.
 // Reads the display world name from LevelMeta.sav (/Script/Pal.PalWorldBaseInfoSaveGame).
 // Traversal order and skip rules match the TypeScript implementation.
+#[cfg(test)]
 use std::path::Path;
 
+#[cfg(test)]
 use super::decompress::decompress_sav;
 use super::gvas::GvasReader;
 
@@ -57,7 +59,8 @@ pub fn extract_world_name_from_gvas(payload: &[u8]) -> Result<Option<String>, St
 
 /// Reads the world name from LevelMeta.sav in a save directory.
 /// Missing or corrupt files return Err so the caller can apply its fallback.
-pub fn extract_world_name(save_dir: &Path) -> Result<Option<String>, String> {
+#[cfg(test)]
+fn extract_world_name(save_dir: &Path) -> Result<Option<String>, String> {
     let bytes = std::fs::read(save_dir.join("LevelMeta.sav")).map_err(|error| error.to_string())?;
     let decompressed = decompress_sav(&bytes)?;
     extract_world_name_from_gvas(&decompressed.payload)

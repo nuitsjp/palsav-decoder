@@ -1,28 +1,20 @@
-[package]
-name = "palsav-decoder"
+[workspace]
+members = ["cli", "shared", "web-api"]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.96"
 license = "GPL-3.0-or-later"
-description = "Standalone Palworld save decoder"
 repository = "https://github.com/nuitsjp/palsav-decoder"
-readme = "README.md"
 authors = ["Atsushi Nakamura"]
 
-[[bin]]
-name = "palsav"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
 flate2 = "1"
 oozextract = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_SystemInformation"] }
-
-[dev-dependencies]
 tempfile = "3"
 
 [profile.release]

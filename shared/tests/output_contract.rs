@@ -1,8 +1,8 @@
-use palsav_decoder::contract::{
+use palsav_decoder::{
     write_metadata, write_player, write_players, write_world, MetadataDocument, OutputFormat,
     PlayerDocument, PlayersDocument, WorldDocument, SCHEMA_VERSION,
 };
-use palsav_decoder::model::{PlayerContainerIndex, PlayerRelicState};
+use palsav_decoder::{PlayerContainerIndex, PlayerRelicState};
 
 #[test]
 fn json_writes_only_the_schema_version_and_values_to_stdout() {

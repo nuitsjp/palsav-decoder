@@ -1,7 +1,7 @@
 // GVAS subset reader ported from tools/save-data-cli/node-save-tool/lib.mjs GvasReader.
 // Scans only as far as worldSaveData.CharacterSaveParameterMap and decodes RawData.
 // Error strings intentionally match the TypeScript implementation.
-use crate::model::CacheCharacter;
+use crate::implementation::model::CacheCharacter;
 
 const ERR_EOF: &str = "Unexpected end of GVAS payload.";
 const UNIX_EPOCH_TICKS: i64 = 621_355_968_000_000_000;
@@ -52,7 +52,7 @@ pub fn format_utc_ticks(ticks: i64) -> String {
     let fractional_ticks = unix_ticks % 10_000_000;
     let days = div_floor(milliseconds_since_unix_epoch, 86_400_000);
     let ms_of_day = milliseconds_since_unix_epoch - days * 86_400_000;
-    let (year, month, day) = crate::timefmt::civil_from_days(days);
+    let (year, month, day) = crate::implementation::timefmt::civil_from_days(days);
     let hours = ms_of_day / 3_600_000;
     let minutes = ms_of_day % 3_600_000 / 60_000;
     let seconds = ms_of_day % 60_000 / 1000;
@@ -850,7 +850,7 @@ pub fn extract_characters_from_gvas(gvas_payload: &[u8]) -> Result<Vec<CacheChar
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 pub(crate) mod test_fixture {
-    use crate::model::CacheCharacter;
+    use crate::implementation::model::CacheCharacter;
 
     /// Produces bytes that formatGuid converts back to the canonical string.
     pub fn guid_bytes_from_canonical(canonical: &str) -> [u8; 16] {

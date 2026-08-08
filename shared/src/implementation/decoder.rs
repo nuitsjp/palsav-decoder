@@ -1,11 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::contract::{
+use crate::implementation::contract::{
     MetadataDocument, PlayerDocument, PlayersDocument, WorldDocument, SCHEMA_VERSION,
 };
-use crate::extractor;
-use crate::model::{DecodedBaseCamp, DecodedPlayerRelics, PlayerContainerIndex, WorldOverview};
+use crate::implementation::extractor;
+use crate::implementation::model::{
+    DecodedBaseCamp, DecodedPlayerRelics, PlayerContainerIndex, WorldOverview,
+};
 
 const WARNING_BASE_CAMPS: &str = "baseCampsUnavailable";
 const WARNING_LEVEL_META: &str = "levelMetaUnavailable";
@@ -33,7 +35,7 @@ pub fn decode_player(path: &Path) -> Result<PlayerDocument, String> {
         pal_storage_container_id,
         otomo_container_id,
         point,
-        relics: crate::model::PlayerRelicState {
+        relics: crate::implementation::model::PlayerRelicState {
             schema_version: 1,
             relics_by_type: relics.relics,
             note_ids: relics.notes,
@@ -148,7 +150,7 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
             match extractor::player_relics::extract_player_relics_from_gvas(&player.payload) {
                 Ok(relics) => player_relics.push(DecodedPlayerRelics {
                     player_uid,
-                    state: crate::model::PlayerRelicState {
+                    state: crate::implementation::model::PlayerRelicState {
                         schema_version: 1,
                         relics_by_type: relics.relics,
                         note_ids: relics.notes,
@@ -251,7 +253,7 @@ fn player_uid_from_path(path: &Path) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::gvas::test_fixture::{
+    use crate::implementation::extractor::gvas::test_fixture::{
         build_level_meta_sav, build_level_sav, expected_standard_characters,
         standard_world_characters,
     };

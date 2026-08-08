@@ -30,12 +30,14 @@ jobs:
           git fetch origin main
           git merge-base --is-ancestor $env:GITHUB_SHA origin/main
           if ($LASTEXITCODE -ne 0) { throw "Release tag must point to a commit on main." }
-          $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
+          $metadata = cargo metadata --no-deps --format-version 1 | ConvertFrom-Json
+          $version = ($metadata.packages | Where-Object name -eq "palsav-decoder-cli").version
+          if (-not $version) { throw "CLI package metadata was not found." }
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag must match Cargo version v$version." }
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --locked
-      - run: cargo build --release --locked
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: cargo build --release --locked --package palsav-decoder-cli
       - name: Generate third-party licenses
         shell: pwsh
         run: cargo about generate about.hbs --output-file THIRD_PARTY_LICENSES.html

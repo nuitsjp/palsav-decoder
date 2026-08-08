@@ -1,0 +1,15 @@
+[package]
+name = "palsav-decoder-web-api"
+description = "Web API facade for Palworld save decoding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+palsav-decoder = { path = "../shared" }
+
+[dev-dependencies]
+tempfile.workspace = true
