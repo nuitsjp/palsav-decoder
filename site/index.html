@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Palworld Save Web Decoder</title>
+  <link rel="stylesheet" href="__STYLE_ASSET__">
+</head>
+<body>
+  <main>
+    <header><span class="eyebrow">palsav-decoder</span><h1>セーブフォルダーを選択</h1></header>
+    <p>SaveGames またはワールドフォルダーを選択してください。</p>
+    <section class="card hero">
+      <input id="folder-picker" type="file" webkitdirectory multiple hidden>
+      <button id="choose-folder" type="button" class="primary">フォルダーを選択</button>
+      <p class="assurance">この処理はブラウザ内だけで完了します</p>
+      <p id="destination" class="muted">スタンドアロンモード: JSONをダウンロードできます。</p>
+    </section>
+    <section id="worlds" class="card" hidden>
+      <h2 tabindex="-1">読み込むワールドを確認</h2>
+      <ul id="candidate-list"></ul>
+    </section>
+    <section id="progress" class="card progress" hidden>
+      <h2>ブラウザー内で解析しています</h2>
+      <p id="status" tabindex="-1" role="status" aria-live="polite"></p>
+      <ul><li>ネットワーク送信 0件</li><li>このタブを閉じずにお待ちください</li></ul>
+    </section>
+    <section id="result" class="card success" hidden>
+      <h2 tabindex="-1">解析が完了しました</h2>
+      <p>連携中の場合はPalOptimizerへ結果を返しました。必要なら中立JSONも保存できます。</p>
+      <button id="download-json" type="button">JSONをダウンロード</button>
+    </section>
+    <p id="error" class="error" tabindex="-1" role="alert" aria-live="assertive"></p>
+    <footer>解析対象ファイルは外部へ送信しません。静的ホストの通常アクセスログにはIP等が残る場合があります。</footer>
+  </main>
+  <script type="module" src="__APP_ASSET__"></script>
+</body>
+</html>
