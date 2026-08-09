@@ -14,6 +14,7 @@ const LEGACY_RELIC_PROPERTY: &str = "RelicObtainForInstanceFlag";
 const RELICS_BY_TYPE_PROPERTY: &str = "RelicObtainForInstanceFlagByType";
 const NOTES_PROPERTY: &str = "NoteObtainForInstanceFlag";
 const ITEM_PICKUPS_PROPERTY: &str = "ItemPickupObtainForInstanceFlag";
+const FAST_TRAVEL_PROPERTY: &str = "FastTravelPointUnlockFlag";
 
 /// Return value of extractPlayerRelicsFromGvas: { relics, notes, ruins }.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,6 +25,8 @@ pub struct PlayerRelics {
     pub notes: Vec<String>,
     /// Acquired ancient ruin placement GUIDs in ascending order.
     pub ruins: Vec<String>,
+    /// Unlocked fast-travel placement GUIDs in ascending order.
+    pub fast_travel_point_ids: Vec<String>,
 }
 
 /// Return value of extractPlayerRelicState. JSON keys and ordering match JavaScript.
@@ -37,6 +40,8 @@ pub struct PlayerRelicState {
     pub note_ids: Vec<String>,
     #[serde(rename = "itemPickupGuids")]
     pub item_pickup_guids: Vec<String>,
+    #[serde(rename = "fastTravelPointIds")]
+    pub fast_travel_point_ids: Vec<String>,
 }
 
 impl From<PlayerRelicState> for crate::implementation::model::PlayerRelicState {
@@ -46,6 +51,7 @@ impl From<PlayerRelicState> for crate::implementation::model::PlayerRelicState {
             relics_by_type: value.relics_by_type,
             note_ids: value.note_ids,
             item_pickup_guids: value.item_pickup_guids,
+            fast_travel_point_ids: value.fast_travel_point_ids,
         }
     }
 }
@@ -61,6 +67,7 @@ pub fn extract_player_relics_from_gvas(gvas_payload: &[u8]) -> Result<PlayerReli
     let mut legacy_relics: BTreeSet<String> = BTreeSet::new();
     let mut notes: Vec<String> = Vec::new();
     let mut ruins: BTreeSet<String> = BTreeSet::new();
+    let mut fast_travel_point_ids: BTreeSet<String> = BTreeSet::new();
 
     while !reader.end() {
         let property_name = reader.read_fstring()?;
@@ -85,6 +92,10 @@ pub fn extract_player_relics_from_gvas(gvas_payload: &[u8]) -> Result<PlayerReli
                 // Ancient ruins use placement GUIDs and share relic GUID normalization.
                 ruins = read_name_bool_map(&mut reader, &type_name)?;
             }
+            FAST_TRAVEL_PROPERTY => {
+                fast_travel_point_ids =
+                    read_guid_bool_map(&mut reader, &type_name, "fast travel flags")?;
+            }
             _ => reader.skip_property(&type_name, size)?,
         }
     }
@@ -101,6 +112,7 @@ pub fn extract_player_relics_from_gvas(gvas_payload: &[u8]) -> Result<PlayerReli
         notes,
         // Byte ordering in BTreeSet matches default JavaScript ordering for lowercase hex.
         ruins: ruins.into_iter().collect(),
+        fast_travel_point_ids: fast_travel_point_ids.into_iter().collect(),
     })
 }
 
@@ -113,12 +125,14 @@ fn extract_player_relic_state(player_sav_path: &str) -> Result<PlayerRelicState,
         relics,
         notes,
         ruins,
+        fast_travel_point_ids,
     } = extract_player_relics_from_gvas(&decompressed.payload)?;
     Ok(PlayerRelicState {
         schema_version: 1,
         relics_by_type: relics,
         note_ids: notes,
         item_pickup_guids: ruins,
+        fast_travel_point_ids,
     })
 }
 
@@ -229,9 +243,17 @@ fn read_name_bool_map(
     reader: &mut GvasReader,
     type_name: &str,
 ) -> Result<BTreeSet<String>, String> {
+    read_guid_bool_map(reader, type_name, "relic flags")
+}
+
+fn read_guid_bool_map(
+    reader: &mut GvasReader,
+    type_name: &str,
+    label: &str,
+) -> Result<BTreeSet<String>, String> {
     if type_name != "MapProperty" {
         return Err(format!(
-            "Expected MapProperty for relic flags, got {type_name}."
+            "Expected MapProperty for {label}, got {type_name}."
         ));
     }
 
@@ -240,7 +262,8 @@ fn read_name_bool_map(
     reader.read_optional_guid_string()?;
     if key_type != "NameProperty" || value_type != "BoolProperty" {
         return Err(format!(
-            "Unexpected relic flag map types: {key_type}/{value_type}."
+            "Unexpected {} flag map types: {key_type}/{value_type}.",
+            label.trim_end_matches(" flags")
         ));
     }
 
@@ -644,6 +667,74 @@ mod tests {
     }
 
     #[test]
+    fn fast_travelは取得前0件から取得後の対象guidだけを増分抽出する() {
+        let before = payload_with_record_data(|writer| {
+            write_flag_map(
+                writer,
+                "FastTravelPointUnlockFlag",
+                "NameProperty",
+                "BoolProperty",
+                &[],
+                &[],
+            );
+        });
+        let after = payload_with_record_data(|writer| {
+            write_flag_map(
+                writer,
+                "FastTravelPointUnlockFlag_2",
+                "NameProperty",
+                "BoolProperty",
+                &["dddddddddddddddddddddddddddddddd"],
+                &[
+                    ("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB", true),
+                    ("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", true),
+                    ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true),
+                    ("cccccccccccccccccccccccccccccccc", false),
+                    ("not-a-guid", true),
+                ],
+            );
+        });
+
+        assert!(extract_player_relics_from_gvas(&before)
+            .unwrap()
+            .fast_travel_point_ids
+            .is_empty());
+        assert_eq!(
+            extract_player_relics_from_gvas(&after)
+                .unwrap()
+                .fast_travel_point_ids,
+            vec![guid('a'), guid('b')]
+        );
+    }
+
+    #[test]
+    fn fast_travelフラグのmap型が異なれば未対応扱いへ丸めず失敗する() {
+        let wrong_property = payload_with_record_data(|writer| {
+            writer.fstring("FastTravelPointUnlockFlag");
+            writer.fstring("ArrayProperty");
+            writer.u64v(0);
+        });
+        assert_eq!(
+            extract_player_relics_from_gvas(&wrong_property).unwrap_err(),
+            "Expected MapProperty for fast travel flags, got ArrayProperty."
+        );
+        let wrong_value = payload_with_record_data(|writer| {
+            write_flag_map(
+                writer,
+                "FastTravelPointUnlockFlag",
+                "NameProperty",
+                "IntProperty",
+                &[],
+                &[],
+            );
+        });
+        assert_eq!(
+            extract_player_relics_from_gvas(&wrong_value).unwrap_err(),
+            "Unexpected fast travel flag map types: NameProperty/IntProperty."
+        );
+    }
+
+    #[test]
     fn rejects_ruin_flags_that_are_not_a_map() {
         let payload = payload_with_record_data(|writer| {
             writer.fstring("ItemPickupObtainForInstanceFlag");
@@ -703,7 +794,7 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&state).unwrap(),
             format!(
-                "{{\"schemaVersion\":1,\"relicsByType\":{{\"CapturePower\":[\"{d}\",\"{f}\"],\"Sunreach\":[\"{a}\",\"{b}\"]}},\"noteIds\":[\"Day1\",\"Day5\"],\"itemPickupGuids\":[\"{one}\",\"{nine}\"]}}",
+                "{{\"schemaVersion\":1,\"relicsByType\":{{\"CapturePower\":[\"{d}\",\"{f}\"],\"Sunreach\":[\"{a}\",\"{b}\"]}},\"noteIds\":[\"Day1\",\"Day5\"],\"itemPickupGuids\":[\"{one}\",\"{nine}\"],\"fastTravelPointIds\":[]}}",
                 a = guid('a'),
                 b = guid('b'),
                 d = guid('d'),

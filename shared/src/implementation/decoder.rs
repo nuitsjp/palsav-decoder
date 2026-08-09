@@ -48,6 +48,7 @@ pub fn decode_player_bytes(bytes: &[u8]) -> Result<PlayerDocument, String> {
             relics_by_type: relics.relics,
             note_ids: relics.notes,
             item_pickup_guids: relics.ruins,
+            fast_travel_point_ids: relics.fast_travel_point_ids,
         },
     })
 }
@@ -198,6 +199,7 @@ fn assemble_world_inner(
                     relics_by_type: relics.relics,
                     note_ids: relics.notes,
                     item_pickup_guids: relics.ruins,
+                    fast_travel_point_ids: relics.fast_travel_point_ids,
                 },
             }),
             Err(_) => player_partial = true,

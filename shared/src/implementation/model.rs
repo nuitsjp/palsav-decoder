@@ -130,6 +130,7 @@ pub struct PlayerRelicState {
     pub relics_by_type: Map<String, Value>,
     pub note_ids: Vec<String>,
     pub item_pickup_guids: Vec<String>,
+    pub fast_travel_point_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

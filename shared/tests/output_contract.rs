@@ -71,6 +71,7 @@ fn player_json_and_ndjson_return_the_same_neutral_data() {
             relics_by_type: serde_json::Map::new(),
             note_ids: Vec::new(),
             item_pickup_guids: Vec::new(),
+            fast_travel_point_ids: Vec::new(),
         },
     };
     let mut json = Vec::new();
