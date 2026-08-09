@@ -40,6 +40,7 @@ pub fn decode_player(path: &Path) -> Result<PlayerDocument, String> {
             relics_by_type: relics.relics,
             note_ids: relics.notes,
             item_pickup_guids: relics.ruins,
+            fast_travel_point_ids: relics.fast_travel_point_ids,
         },
     })
 }
@@ -155,6 +156,7 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
                         relics_by_type: relics.relics,
                         note_ids: relics.notes,
                         item_pickup_guids: relics.ruins,
+                        fast_travel_point_ids: relics.fast_travel_point_ids,
                     },
                 }),
                 Err(_) => player_partial = true,
