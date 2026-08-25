@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "palsav-decoder"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "flate2",
  "oozextract",
@@ -390,14 +390,14 @@ dependencies = [
 
 [[package]]
 name = "palsav-decoder-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "palsav-decoder",
 ]
 
 [[package]]
 name = "palsav-decoder-wasm"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "palsav-decoder",
  "serde_json",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "palsav-decoder-web-api"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "palsav-decoder",
  "tempfile",

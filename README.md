@@ -123,7 +123,10 @@ command returns all available data and adds stable, path-free warning codes to `
 `decode player` returns `schemaVersion`, optional Pal storage and Otomo container IDs, an optional
 world point, and relic state. `decode meta` returns `schemaVersion` and a nullable `worldName`.
 `decode players` returns `schemaVersion`, all valid `playerRelics`, and `warnings` after scanning
-the Players directory once. It is intended for polling clients that must avoid one process per player.
+the Players directory once. Structurally validated dimension Pal storage documents
+(`SaveParameterArray<PalDimensionPalStorageSaveParameter>`, normally named `*_dps.sav`) are not
+player saves and are ignored without a warning. It is intended for polling clients that must avoid
+one process per player.
 
 ### NDJSON
 

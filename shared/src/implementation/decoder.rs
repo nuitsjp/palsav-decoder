@@ -13,6 +13,8 @@ const WARNING_BASE_CAMPS: &str = "baseCampsUnavailable";
 const WARNING_LEVEL_META: &str = "levelMetaUnavailable";
 const WARNING_PLAYER_DATA: &str = "playerDataPartiallyUnavailable";
 const WARNING_WORLD: &str = "worldOverviewUnavailable";
+const DIMENSION_STORAGE_INPUT_ERROR: &str =
+    "Input is a dimension Pal storage save, not a player save.";
 
 pub fn decode_metadata(path: &Path) -> Result<MetadataDocument, String> {
     let bytes = fs::read(path).map_err(|error| error.to_string())?;
@@ -33,12 +35,19 @@ pub fn decode_player(path: &Path) -> Result<PlayerDocument, String> {
 }
 
 pub fn decode_player_bytes(bytes: &[u8]) -> Result<PlayerDocument, String> {
+    decode_optional_player_bytes(bytes)?.ok_or_else(|| DIMENSION_STORAGE_INPUT_ERROR.to_string())
+}
+
+fn decode_optional_player_bytes(bytes: &[u8]) -> Result<Option<PlayerDocument>, String> {
     let decoded = extractor::decompress::decompress_sav(bytes)?;
+    if extractor::player_relics::is_dimension_pal_storage_gvas(&decoded.payload)? {
+        return Ok(None);
+    }
     let (pal_storage_container_id, otomo_container_id) =
         extractor::gvas::read_player_container_ids(&decoded.payload)?;
     let point = extractor::world::extract_player_point_from_gvas(&decoded.payload)?;
     let relics = extractor::player_relics::extract_player_relics_from_gvas(&decoded.payload)?;
-    Ok(PlayerDocument {
+    Ok(Some(PlayerDocument {
         schema_version: SCHEMA_VERSION,
         pal_storage_container_id,
         otomo_container_id,
@@ -50,7 +59,7 @@ pub fn decode_player_bytes(bytes: &[u8]) -> Result<PlayerDocument, String> {
             item_pickup_guids: relics.ruins,
             fast_travel_point_ids: relics.fast_travel_point_ids,
         },
-    })
+    }))
 }
 
 pub fn decode_players(path: &Path) -> Result<PlayersDocument, String> {
@@ -63,15 +72,18 @@ pub fn decode_players(path: &Path) -> Result<PlayersDocument, String> {
     let mut player_relics = Vec::new();
     let mut partial = directory_unavailable;
     for player_path in files {
-        let Some(player_uid) = player_uid_from_path(&player_path) else {
-            partial = true;
-            continue;
-        };
-        match decode_player(&player_path) {
-            Ok(player) => player_relics.push(DecodedPlayerRelics {
-                player_uid,
-                state: player.relics,
-            }),
+        let player = fs::read(&player_path)
+            .map_err(|error| error.to_string())
+            .and_then(|bytes| decode_optional_player_bytes(&bytes));
+        match player {
+            Ok(Some(player)) => match player_uid_from_path(&player_path) {
+                Some(player_uid) => player_relics.push(DecodedPlayerRelics {
+                    player_uid,
+                    state: player.relics,
+                }),
+                None => partial = true,
+            },
+            Ok(None) => {}
             Err(_) => partial = true,
         }
     }
@@ -106,12 +118,16 @@ pub fn decode_world(path: &Path) -> Result<WorldDocument, String> {
     let mut player_partial = player_directory_unavailable;
     let mut player_bytes = Vec::new();
     for player_path in player_paths {
-        let Some(player_uid) = player_uid_from_path(&player_path) else {
+        let Some(player_id_candidate) = player_path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .map(str::to_ascii_lowercase)
+        else {
             player_partial = true;
             continue;
         };
         match fs::read(player_path) {
-            Ok(bytes) => player_bytes.push((player_uid, bytes)),
+            Ok(bytes) => player_bytes.push((player_id_candidate, bytes)),
             Err(_) => player_partial = true,
         }
     }
@@ -167,14 +183,22 @@ fn assemble_world_inner(
     let mut player_points = Vec::new();
     let mut player_relics = Vec::new();
     for (player_uid, bytes) in players {
-        if !is_player_uid(&player_uid) {
-            player_partial = true;
-            continue;
-        }
         let Ok(player) = extractor::decompress::decompress_sav(bytes) else {
             player_partial = true;
             continue;
         };
+        match extractor::player_relics::is_dimension_pal_storage_gvas(&player.payload) {
+            Ok(true) => continue,
+            Ok(false) => {}
+            Err(_) => {
+                player_partial = true;
+                continue;
+            }
+        }
+        if !is_player_uid(&player_uid) {
+            player_partial = true;
+            continue;
+        }
         match extractor::gvas::read_player_container_ids(&player.payload) {
             Ok((storage, otomo)) => {
                 if let Some(value) = storage {
@@ -299,8 +323,8 @@ fn is_player_uid(value: &str) -> bool {
 mod tests {
     use super::*;
     use crate::implementation::extractor::gvas::test_fixture::{
-        build_level_meta_sav, build_level_sav, expected_standard_characters,
-        standard_world_characters,
+        build_dimension_pal_storage_sav, build_level_meta_sav, build_level_sav,
+        expected_standard_characters, standard_world_characters,
     };
 
     #[test]
@@ -356,6 +380,73 @@ mod tests {
         let document = decode_players(directory.path()).unwrap();
 
         assert!(document.player_relics.is_empty());
+        assert_eq!(document.warnings, vec![WARNING_PLAYER_DATA.to_string()]);
+    }
+
+    #[test]
+    fn 次元パルボックス保存をプレイヤー部分失敗に数えない() {
+        let directory = tempfile::tempdir().unwrap();
+        let players = directory.path().join("Players");
+        fs::create_dir(&players).unwrap();
+        fs::write(
+            players.join("0123456789abcdef0123456789abcdef_dps.sav"),
+            build_dimension_pal_storage_sav("single-zlib"),
+        )
+        .unwrap();
+
+        let document = decode_players(directory.path()).unwrap();
+
+        assert!(document.player_relics.is_empty());
+        assert!(document.warnings.is_empty());
+    }
+
+    #[test]
+    fn 単一player復号は次元パルボックス保存を明示的に拒否する() {
+        let error =
+            decode_player_bytes(&build_dimension_pal_storage_sav("single-zlib")).unwrap_err();
+
+        assert_eq!(error, DIMENSION_STORAGE_INPUT_ERROR);
+    }
+
+    #[test]
+    fn world復号でも次元パルボックス保存を警告しない() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            directory.path().join("Level.sav"),
+            build_level_sav(&standard_world_characters(), "double-zlib"),
+        )
+        .unwrap();
+        fs::write(
+            directory.path().join("LevelMeta.sav"),
+            build_level_meta_sav(Some("検証ワールド"), "single-zlib"),
+        )
+        .unwrap();
+        let players = directory.path().join("Players");
+        fs::create_dir(&players).unwrap();
+        fs::write(
+            players.join("0123456789abcdef0123456789abcdef_dps.sav"),
+            build_dimension_pal_storage_sav("single-zlib"),
+        )
+        .unwrap();
+
+        let document = decode_world(directory.path()).unwrap();
+
+        assert!(!document.warnings.contains(&WARNING_PLAYER_DATA.to_string()));
+    }
+
+    #[test]
+    fn dps名でも既知構造でなければ部分失敗に数える() {
+        let directory = tempfile::tempdir().unwrap();
+        let players = directory.path().join("Players");
+        fs::create_dir(&players).unwrap();
+        fs::write(
+            players.join("0123456789abcdef0123456789abcdef_dps.sav"),
+            [0_u8],
+        )
+        .unwrap();
+
+        let document = decode_players(directory.path()).unwrap();
+
         assert_eq!(document.warnings, vec![WARNING_PLAYER_DATA.to_string()]);
     }
 
