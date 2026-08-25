@@ -417,7 +417,7 @@ impl<'a> GvasReader<'a> {
                 self.read_optional_guid_string()?;
                 self.skip(size)
             }
-            "ArrayProperty" => {
+            "ArrayProperty" | "SetProperty" => {
                 self.read_fstring()?;
                 self.read_optional_guid_string()?;
                 self.skip(size)
@@ -1573,6 +1573,21 @@ mod tests {
             reader.read_int_like_property("ByteProperty", 1).unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn set_propertyを読み飛ばして次のproperty境界を保つ() {
+        let mut writer = GvasWriter::default();
+        writer.fstring("StructProperty");
+        writer.no_guid_flag();
+        writer.raw(&[1, 2, 3]);
+        writer.fstring("NextProperty");
+        let buffer = writer.into_bytes();
+        let mut reader = GvasReader::new(&buffer);
+
+        reader.skip_property("SetProperty", 3).unwrap();
+
+        assert_eq!(reader.read_fstring().unwrap(), "NextProperty");
     }
 
     #[test]
