@@ -15,6 +15,8 @@ const RELICS_BY_TYPE_PROPERTY: &str = "RelicObtainForInstanceFlagByType";
 const NOTES_PROPERTY: &str = "NoteObtainForInstanceFlag";
 const ITEM_PICKUPS_PROPERTY: &str = "ItemPickupObtainForInstanceFlag";
 const FAST_TRAVEL_PROPERTY: &str = "FastTravelPointUnlockFlag";
+const DIMENSION_STORAGE_ARRAY_PROPERTY: &str = "SaveParameterArray";
+const DIMENSION_STORAGE_STRUCT: &str = "PalDimensionPalStorageSaveParameter";
 
 /// Return value of extractPlayerRelicsFromGvas: { relics, notes, ruins }.
 #[derive(Debug, Clone, PartialEq)]
@@ -114,6 +116,47 @@ pub fn extract_player_relics_from_gvas(gvas_payload: &[u8]) -> Result<PlayerReli
         ruins: ruins.into_iter().collect(),
         fast_travel_point_ids: fast_travel_point_ids.into_iter().collect(),
     })
+}
+
+/// Players 配下へ共存する次元パルボックス保存を、配列要素を展開せずに識別する。
+/// 通常のプレイヤー保存はルートに SaveData を持つ一方、この保存は
+/// SaveParameterArray<PalDimensionPalStorageSaveParameter> だけを持つ。
+pub fn is_dimension_pal_storage_gvas(gvas_payload: &[u8]) -> Result<bool, String> {
+    let mut reader = GvasReader::new(gvas_payload);
+    reader.read_header()?;
+    while !reader.end() {
+        let property_name = reader.read_fstring()?;
+        if property_name == "None" {
+            return Ok(false);
+        }
+        let type_name = reader.read_fstring()?;
+        let size = reader.read_u64()?;
+        if normalize_property_name(&property_name) != DIMENSION_STORAGE_ARRAY_PROPERTY {
+            reader.skip_property(&type_name, size)?;
+            continue;
+        }
+        if type_name != "ArrayProperty" {
+            return Ok(false);
+        }
+        let element_type = reader.read_fstring()?;
+        reader.read_optional_guid_string()?;
+        if element_type != "StructProperty" {
+            return Ok(false);
+        }
+        reader.read_u32()?;
+        let metadata_name = reader.read_fstring()?;
+        let metadata_type = reader.read_fstring()?;
+        reader.read_u64()?;
+        let struct_type = reader.read_fstring()?;
+        reader.read_guid_string()?;
+        reader.read_optional_guid_string()?;
+        return Ok(
+            normalize_property_name(&metadata_name) == DIMENSION_STORAGE_ARRAY_PROPERTY
+                && metadata_type == "StructProperty"
+                && struct_type == DIMENSION_STORAGE_STRUCT,
+        );
+    }
+    Ok(false)
 }
 
 /// Equivalent to player-relics.mjs extractPlayerRelicState.

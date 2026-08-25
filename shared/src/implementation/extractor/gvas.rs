@@ -1272,6 +1272,31 @@ pub(crate) mod test_fixture {
         wrap_as_level_sav(&build_gvas_payload(characters), compression)
     }
 
+    /// Players 配下へ共存する次元パルボックス保存の最小 fixture。
+    /// 実データの 9,600 要素は含めず、ルートと配列メタデータだけを再現する。
+    pub fn build_dimension_pal_storage_sav(compression: &str) -> Vec<u8> {
+        let mut body = GvasWriter::default();
+        body.u32v(0);
+        body.fstring("SaveParameterArray");
+        body.fstring("StructProperty");
+        body.u64v(0);
+        body.fstring("PalDimensionPalStorageSaveParameter");
+        body.zero_guid();
+        body.no_guid_flag();
+        let body = body.into_bytes();
+
+        let mut writer = GvasWriter::default();
+        write_header(&mut writer);
+        writer.fstring("SaveParameterArray");
+        writer.fstring("ArrayProperty");
+        writer.u64v(body.len() as u64);
+        writer.fstring("StructProperty");
+        writer.no_guid_flag();
+        writer.raw(&body);
+        writer.fstring("None");
+        wrap_as_level_sav(&writer.into_bytes(), compression)
+    }
+
     /// Minimal LevelMeta.sav (PalWorldBaseInfoSaveGame) structure.
     /// Produces the same bytes as buildLevelMetaPayload in the TypeScript fixture.
     /// Passing None omits WorldName to exercise degraded input.
