@@ -37,7 +37,7 @@ jobs:
           RELEASE_JSON="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
           test "$(jq -r .draft <<< "$RELEASE_JSON")" = "false"
           test "$(jq -r .prerelease <<< "$RELEASE_JSON")" = "false"
-          TAG_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq .object.sha)"
+          TAG_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$RELEASE_TAG" --jq .sha)"
           ARCHIVE="palsav-web-$RELEASE_TAG.zip"
           mkdir -p release "dist/pages/$RELEASE_TAG"
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
